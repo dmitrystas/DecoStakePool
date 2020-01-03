@@ -93,7 +93,7 @@ do
 							CHECK_POOL=$(curl -s 'https://explorer.incentivized-testnet.iohkdev.io/explorer/graphql' -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:71.0) Gecko/20100101 Firefox/71.0' -H 'content-type: application/json' -H 'referer: https://shelleyexplorer.cardano.org/en/block/$LAST_HASH' -H 'Accept-Language: en-US,en;q=0.5' --data-binary '{"query":"\n      query {\n        block (id:\"$LAST_HASH\") {\n          \n  leader {\n    __typename\n    ... on Pool {\n      \n  id\n      }\n  }\n\n        }\n      }\n    "}' | grep "$POOL_ID")
 							if [ -z "$CHECK_POOL" ]; then
 								STEP=$(( $STEP + 1 ))
-								sleep STEP
+								sleep $STEP
 							else
 								break;
 							fi
