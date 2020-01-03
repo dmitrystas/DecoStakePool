@@ -90,10 +90,10 @@ do
 						STEP=1
 						while [ $STEP -le 5 ]
 						do
-							CHECK_POOL=$(curl -s 'https://explorer.incentivized-testnet.iohkdev.io/explorer/graphql' -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:71.0) Gecko/20100101 Firefox/71.0' -H 'content-type: application/json' -H 'referer: https://shelleyexplorer.cardano.org/en/block/$LAST_HASH' -H 'Accept-Language: en-US,en;q=0.5' --data-binary '{"query":"\n      query {\n        block (id:\"$LAST_HASH\") {\n          \n  leader {\n    __typename\n    ... on Pool {\n      \n  id\n      }\n  }\n\n        }\n      }\n    "}' | grep "$POOL_ID")
+							CHECK_POOL=$(curl -s 'https://explorer.incentivized-testnet.iohkdev.io/explorer/graphql?$STEP' -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:71.0) Gecko/20100101 Firefox/71.0' -H 'content-type: application/json' -H "referer: https://shelleyexplorer.cardano.org/en/block/$LAST_HASH" -H 'Accept-Language: en-US,en;q=0.5' --data-binary "{\"query\":\"\n      query {\n        block (id:\\\"$LAST_HASH\\\") {\n          \n  leader {\n    __typename\n    ... on Pool {\n      \n  id\n      }\n  }\n\n        }\n      }\n    \"}" | grep "$POOL_ID")
 							if [ -z "$CHECK_POOL" ]; then
 								STEP=$(( $STEP + 1 ))
-								sleep $STEP
+								sleep 5
 							else
 								break;
 							fi
@@ -113,19 +113,22 @@ do
 				
 				LEADER_DELTA=99999999
 				SCHEDULED_AT_TIME=""
-				while read -r line; do
-					if [ "$(uname -s)" == "Darwin" ]; then
-						TIME_LEADER=$(date -ju -f "%FT%T+00:00" $line +%s 2>/dev/null)
-					else
-						TIME_LEADER=$(date -d $line +%s 2>/dev/null)
-					fi
-					LEADER_DELTA_NEW=$(($TIME_LEADER - $TIME_NOW))
-					
-					if [[ $LEADER_DELTA_NEW -lt $LEADER_DELTA ]]; then
-						LEADER_DELTA=$LEADER_DELTA_NEW
-						SCHEDULED_AT_TIME=$line
-					fi
-				done <<< $(echo "$LEADERS_LOGS" | grep -iF "status: pending" -B 3 | grep "scheduled_at_time" | awk -F '"' '{print $2}')
+				PENDING_BLOCKS=$(echo "$LEADERS_LOGS" | grep -iF "status: pending" -B 3)
+				if [ ! -z "$PENDING_BLOCKS" ]; then
+					while read -r line; do
+						if [ "$(uname -s)" == "Darwin" ]; then
+							TIME_LEADER=$(date -ju -f "%FT%T+00:00" $line +%s 2>/dev/null)
+						else
+							TIME_LEADER=$(date -d $line +%s 2>/dev/null)
+						fi
+						LEADER_DELTA_NEW=$(($TIME_LEADER - $TIME_NOW))
+						
+						if [[ $LEADER_DELTA_NEW -lt $LEADER_DELTA ]]; then
+							LEADER_DELTA=$LEADER_DELTA_NEW
+							SCHEDULED_AT_TIME=$line
+						fi
+					done <<< $(echo "$PENDING_BLOCKS" | grep "scheduled_at_time" | awk -F '"' '{print $2}')
+				fi
 				
 				if [[ $LEADER_DELTA -lt $LEADER_DELTA_LIMIT ]]; then
 					LEADER_DELTA=$(($LEADER_DELTA + 5))
